@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8">
     <title>Accurate Triangle</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins">
+    <link rel="stylesheet" href="style.css"/>
     <script src="script.js" defer></script>
   </head>
   <body>
@@ -12,11 +13,13 @@
     </header>
     <main>
       <div class="container">
-        <div class="colour-interative">
-          <div class="hue-slider" style="">
-            <div class="slider-track"></div>
-            <div class="slider-handle"></div>
-            <div class="slider-track"></div>
+        <div class="colour-interactive">
+          <div class="hue-slider">
+            <div class="slider-track" style="left:20%"></div>
+            <div class="slider-handle">
+              <input class="slider-input" type="range" step="1" max="360" min="0">
+            </div>
+            <div class="slider-track" style="left:80%"></div>
           </div>
           <canvas class="colourtriangle-canvas"></canvas>
           <div class="colour-display"></div>
