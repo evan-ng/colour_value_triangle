@@ -13,18 +13,10 @@
     margin: 0;
 }
 
-html {
-    /* footer support */
-    position: relative;
-    min-height: 100%;
-}
-
 body {
     background-color: var(--primary-dark);
     color: var(--primary-light);
     font-family: "Poppins", sans-serif;
-    /* footer support */
-    margin-bottom: 100px;
     display: flex;
     flex-direction: column;
     justify-content: center;
