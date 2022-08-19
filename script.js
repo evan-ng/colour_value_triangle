@@ -37,6 +37,57 @@ class HSV {
 }
 
 /*
+ * Greyscaling colour functions (luma and desaturation)
+ */
+// @param: RGB, CYMK, HSL, or HSV colours
+// @return: ITU-R Recommendation BT.601 luma in RGB
+function toGreyRelLum601(colour) {
+  let rgb = colour;
+  if (colour.constructor.name != RGB) {
+    try {
+      rgb = colour.toRGB();
+    } catch (error) {
+      return;
+    }
+  }
+
+  let luma = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+  return new RGB(luma, luma, luma);
+}
+
+// @param: RGB, CYMK, HSL, or HSV colours
+// @return: ITU-R Recommendation BT.709 luma in RGB
+function toGreyRelLum709(colour) {
+  let rgb = colour;
+  if (colour.constructor.name != RGB) {
+    try {
+      rgb = colour.toRGB();
+    } catch (error) {
+      return;
+    }
+  }
+
+  let luma = 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+  return new RGB(luma, luma, luma);
+}
+
+// @param: RGB, CYMK, HSL, or HSV colours
+// @return: Desaturated colour (S(aturation) in HSL/HSV set to 0) in RGB
+function toGreyDesaturate(colour) {
+  let hsl = colour;
+  if (colour.constructor.name != HSL) {
+    try {
+      hsl = colour.toHSL();
+    } catch (error) {
+      return;
+    }
+  }
+
+  let grey = new HSL(hsl.h, 0, hsl.l);
+  return grey.toRGB();
+}
+
+/*
  * Colour conversion functions between HEX, RGB, CYMK, HSL, HSV
  */
 function hexToRGB(hex) {
