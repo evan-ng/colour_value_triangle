@@ -37,8 +37,35 @@ class HSV {
 }
 
 /*
- * Colour conversion functions
+ * Colour conversion functions between HEX, RGB, CYMK, HSL, HSV
  */
+function hexToRGB(hex) {
+  let reg = /^\#{0,1}([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return new RGB(parseInt(reg[1], 16), 
+    parseInt(reg[2], 16), 
+    parseInt(reg[3], 16)
+  );
+}
+
+function hexToCYMK(hex) {
+  let rgb = hexToRGB(hex);
+  return rgb.toCYMK();
+}
+
+function hexToHSL(hex) {
+  let rgb = hexToRGB(hex);
+  return rgb.toHSL();
+}
+
+function hexToHSV(hex) {
+  let rgb = hexToRGB(hex);
+  return rgb.toHSV();
+}
+
+RGB.prototype.toHEX = function() {
+  return ((1 << 24) + (this.r << 16) + (this.g << 8) + this.b).toString(16).slice(1);
+}
+
 RGB.prototype.toCYMK = function() {
   let rd = this.r / 255;
   let gd = this.g / 255;
@@ -134,6 +161,11 @@ RGB.prototype.toHSV = function() {
   return new HSV(h, s, v);
 }
 
+CYMK.prototype.toHEX = function() {
+  let rgb = this.toRGB();
+  return rgb.toHEX();
+}
+
 CYMK.prototype.toRGB = function() {
   let rk = 1 - this.k;
   let r = 255 * (1 - this.c) * rk;
@@ -151,6 +183,11 @@ CYMK.prototype.toHSL = function() {
 CYMK.prototype.toHSV = function() {
   let rgb = this.toRGB();
   return rgb.toHSV();
+}
+
+HSL.prototype.toHEX = function() {
+  let rgb = this.toRGB();
+  return rgb.toHEX();
 }
 
 HSL.prototype.toRGB = function() {
@@ -184,6 +221,11 @@ HSL.prototype.toHSV = function() {
   s = Math.round(s * 100);
   v = Math.round(v * 100);
   return new HSV(h, s, v);
+}
+
+HSV.prototype.toHEX = function() {
+  let rgb = this.toRGB();
+  return rgb.toHEX();
 }
 
 HSV.prototype.toRGB = function() {
