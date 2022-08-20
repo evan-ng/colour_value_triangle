@@ -3,6 +3,10 @@
     --secondary-dark: #151515;
     --primary-light: #ededed;
     --secondary-light: #4b4b4b;
+
+    --thumb-colour: transparent;
+    --thumb-thickness: 1px;
+    --thumb-outline: var(--secondary-light);
 }
 
 *,
@@ -134,7 +138,7 @@ input:focus {
     outline: none;
     box-shadow: none;
     cursor: pointer;
-    transform: rotateZ(270deg);
+    transform: rotateZ(90deg);
 }
 
 input[type="range"] {
@@ -158,8 +162,8 @@ input[type="range"]::-webkit-slider-runnable-track {
 input[type="range"]::-webkit-slider-thumb {
     height: 20px;
     width: 20px;
-    background: cyan;
-    border: 1px solid white;
+    background: var(--thumb-colour);
+    border: var(--thumb-thickness) solid var(--thumb-outline);
     border-radius: 10px;
     box-shadow: none;
     cursor: pointer;
@@ -182,8 +186,8 @@ input[type="range"]::-moz-range-track {
 input[type="range"]::-moz-range-thumb {
     height: 20px;
     width: 10px;
-    background: cyan;
-    border: 1px solid white;
+    background: var(--thumb-colour);
+    border: var(--thumb-thickness) solid var(--thumb-outline);
     border-radius: 5px;
     box-shadow: none;
     cursor: pointer;
@@ -203,8 +207,8 @@ input[type="range"]::-ms-track {
 input[type="range"]::-ms-thumb {
     height: 20px;
     width: 10px;
-    background: cyan;
-    border: 1px solid white;
+    background: var(--thumb-colour);
+    border: var(--thumb-thickness) solid var(--thumb-outline);
     border-radius: 5px;
     box-shadow: none;
     cursor: pointer;

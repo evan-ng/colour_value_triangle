@@ -37,21 +37,95 @@ class HSV {
 }
 
 /*
+ * get document elements
+ */
+const hueInput = document.querySelector('.slider-input');
+const colourCanvas = document.querySelector('.colourtriangle-canvas');
+const colourDisplay = document.querySelector('.colour-display');
+const hexInput = document.querySelector('.hex-input');
+const rgbInput = document.querySelector('.rgb-input');
+const cymkInput = document.querySelector('.cymk-input');
+const hsvInput = document.querySelector('.hsv-input');
+const hslInput = document.querySelector('.hsl-input');
+
+/*
+ * 
+ */
+hueInput.addEventListener( 'input', (e) => setCurrentColour(e.target.value) );
+hueInput.addEventListener( 'mousedown', () => focusHandle() );
+hueInput.addEventListener( 'mouseup', () => unFocusHandle() );
+
+function setCurrentColour(hueValue) {
+  hexInput.value = hueValue;
+  colourDisplay.style.setProperty('background', `hsl(${hueValue}, 100%, 50%)`);
+  hueInput.style.setProperty('--thumb-colour', `hsl(${hueValue}, 100%, 50%)`);
+  drawTriangle(hueValue);
+}
+
+function focusHandle() {
+  hueInput.style.setProperty('--thumb-thickness', '2px');
+  hueInput.style.setProperty('--thumb-outline', 'var(--primary-dark)');
+}
+
+function unFocusHandle() {
+  hueInput.style.setProperty('--thumb-thickness', '1px');
+  hueInput.style.setProperty('--thumb-outline', 'var(--secondary-light)');
+}
+
+function drawTriangle(hueValue) {
+  let ctx = colourCanvas.getContext("2d");
+  let width = colourCanvas.width;
+  let height = colourCanvas.height;
+  ctx.clearRect(0, 0, width, height);
+  let id = ctx.getImageData(0, 0, width, height);
+  let pixels = id.data; 
+
+  let fullSat = new HSL(hueValue, 100, 50); // full saturated colour in hsl
+  let greyFullRGB = toGreyRelLum601(fullSat); // in rgb
+  let greyFullHSL = greyFullRGB.toHSL();
+
+  // determine vertex of most saturated end and slopes of lines leading to it
+  let fullY = height * ( 1 - (greyFullHSL.l / 100));
+  let topSlope = fullY / width;
+  let botSlope = (height - fullY) / width;
+
+  // fill in the triangle based based on the hue
+  for (let x = 0; x < width; x++) {
+    for (let y = 0 + Math.floor(topSlope * x); y < height - Math.floor(botSlope * x); y++) {
+      let s = 100 * (x / width);
+      let l = 100 * (1 - (y / height)) + (50 - greyFullHSL.l) * (x/width);
+      
+      let hsl = new HSL(hueValue, s, l);
+      let rgb = hsl.toRGB();
+
+      let off = (y * id.width + x) * 4;
+      pixels[off] = rgb.r;
+      pixels[off + 1] = rgb.g;
+      pixels[off + 2] = rgb.b;
+      pixels[off + 3] = 255;
+    }
+  }
+  
+  ctx.putImageData(id, 0, 0); // place image date into canvas
+}
+
+
+/*
  * Greyscaling colour functions (luma and desaturation)
  */
 // @param: RGB, CYMK, HSL, or HSV colours
 // @return: ITU-R Recommendation BT.601 luma in RGB
 function toGreyRelLum601(colour) {
   let rgb = colour;
-  if (colour.constructor.name != RGB) {
+  if (colour.constructor.name != "RGB") {
     try {
       rgb = colour.toRGB();
     } catch (error) {
-      return;
+      return new RGB(0, 0, 0);
     }
   }
 
-  let luma = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+  let luma = (0.299 * rgb.r) + (0.587 * rgb.g) + (0.114 * rgb.b);
   return new RGB(luma, luma, luma);
 }
 
@@ -59,15 +133,15 @@ function toGreyRelLum601(colour) {
 // @return: ITU-R Recommendation BT.709 luma in RGB
 function toGreyRelLum709(colour) {
   let rgb = colour;
-  if (colour.constructor.name != RGB) {
+  if (colour.constructor.name != "RGB") {
     try {
       rgb = colour.toRGB();
     } catch (error) {
-      return;
+      return new RGB(0, 0, 0);
     }
   }
 
-  let luma = 0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b;
+  let luma = (0.2126 * rgb.r) + (0.7152 * rgb.g) + (0.0722 * rgb.b);
   return new RGB(luma, luma, luma);
 }
 
@@ -75,11 +149,11 @@ function toGreyRelLum709(colour) {
 // @return: Desaturated colour (S(aturation) in HSL/HSV set to 0) in RGB
 function toGreyDesaturate(colour) {
   let hsl = colour;
-  if (colour.constructor.name != HSL) {
+  if (colour.constructor.name != "HSL") {
     try {
       hsl = colour.toHSL();
     } catch (error) {
-      return;
+      return new RGB(0, 0, 0);
     }
   }
 
@@ -242,9 +316,14 @@ HSL.prototype.toHEX = function() {
 }
 
 HSL.prototype.toRGB = function() {
-  let c = (1 - Math.abs(2 * this.l)) * this.s;
-  let x = (1 - Math.abs(((H / 60) % 2) - 1)) * c;
-  let m = this.l - c/2;
+  let h = this.h;
+  let s = this.s / 100;
+  let l = this.l / 100;
+
+  let c = (1 - Math.abs(2 * l - 1)) * s;
+  let x = (1 - Math.abs(((this.h / 60) % 2) - 1)) * c;
+  let m = l - (c / 2);
+
   let r, g, b;
   if (h < 60) { r = c; g = x; b = 0; }
   else if (h < 120) { r = x; g = c; b = 0; }
@@ -280,9 +359,14 @@ HSV.prototype.toHEX = function() {
 }
 
 HSV.prototype.toRGB = function() {
-  let c = (this.v / 100) * (this.s / 100);
-  let x = (1 - Math.abs(((H / 60) % 2) - 1)) * c;
-  let m = (this.v / 100) - c;
+  let h = this.h;
+  let s = this.s / 100;
+  let v = this.v / 100;
+
+  let c = v * s;
+  let x = (1 - Math.abs(((h / 60) % 2) - 1)) * c;
+  let m = v - c;
+  
   let r, g, b;
   if (h < 60) { r = c; g = x; b = 0; }
   else if (h < 120) { r = x; g = c; b = 0; }
