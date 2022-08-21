@@ -82,7 +82,7 @@ colourCanvas.addEventListener( 'mousedown', (e) => {
   focusHandle();
 } );
 colourCanvas.addEventListener( 'mouseup', () => unFocusHandle() );
-
+// ensure the colours and handles are in the correct places
 window.addEventListener( 'resize', () => moveHandleToDefault() );
 window.addEventListener( 'load', () => {
   setCurrentHue(hueInput.value);
@@ -95,7 +95,9 @@ window.addEventListener( 'load', () => {
  *******************/
 
 /**
- * 
+ * Sets the global variables according to the selected hue, 
+ * draws the colour triangle, and makes any necessary adjustments to
+ * the triangle handle
  * @param {*} hueValue 
  */
 function setCurrentHue(hueValue) {
@@ -119,7 +121,8 @@ function setCurrentHue(hueValue) {
 }
 
 /**
- * 
+ * Allows the user to drag the triangle handle, then
+ * sets the selected colour based on the position of the handle
  * @param {*} e 
  */
 function setCurrentColour(e) {
@@ -135,7 +138,8 @@ function setCurrentColour(e) {
 }
 
 /**
- * 
+ * Move the triangle handle within allowed bounds then set
+ * the current colour according to the handle's position
  * @param {*} e 
  */
 function dragHandle(e) {
@@ -144,7 +148,7 @@ function dragHandle(e) {
 }
 
 /**
- * 
+ * Thicken the border of the hue thumb
  */
  function focusThumb() {
   hueInput.style.setProperty('--thumb-thickness', '2px');
@@ -152,7 +156,7 @@ function dragHandle(e) {
 }
 
 /**
- * 
+ * Thin the border of the hue thumb
  */
 function unFocusThumb() {
   hueInput.style.setProperty('--thumb-thickness', '1px');
@@ -160,14 +164,14 @@ function unFocusThumb() {
 }
 
 /**
- * 
+ * Thicken the border of the triangle handle
  */
 function focusHandle() {
   triangleHandle.style.setProperty('border', '2px solid var(--primary-dark)');
 }
 
 /**
- * 
+ * Thin the border of the triangle handle
  */
 function unFocusHandle() {
   triangleHandle.style.setProperty('border', '1px solid var(--secondary-light)');
@@ -202,7 +206,8 @@ function setTriangleHandle(top, left, colour) {
 }
 
 /**
- * 
+ * Based on the colour selected by the handle, 
+ * places the colour's text representations in the input boxes
  */
 function setColourInputs() {
   let hex = currentColour.toHEX();
@@ -219,10 +224,12 @@ function setColourInputs() {
 }
 
 /**
- * 
+ * Enforces boundaries upon the top and left positions, then
+ * returns the colour associated with that position
  * @param {*} top 
  * @param {*} left 
- * @returns 
+ * @returns {Object} The top and left values adjusted to the boundaries
+ *                   and the colour associated with that position
  */
 function boundTriangleHandle(top, left) {
   // get the boundary x and y coordinates of the triangle canvas
@@ -257,7 +264,7 @@ function boundTriangleHandle(top, left) {
 }
 
 /**
- * 
+ * Places the triangle handle on the white corner of the triangle
  */
 function moveHandleToDefault() {
   let canvasBounds = colourCanvas.getBoundingClientRect();
@@ -268,7 +275,8 @@ function moveHandleToDefault() {
 }
 
 /**
- * 
+ * Draws the triangle based on the hue given, changing the position
+ * of the vertex containing the most saturated colour
  * @param {*} hueValue 
  */
 function drawTriangle(hueValue) {
