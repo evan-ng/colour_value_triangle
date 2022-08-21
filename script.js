@@ -1,8 +1,8 @@
-"use strict";
+'use strict';
 
-/*
- * Classes for RGB, CYMK, HSV, and HSL colour representations
- */
+/**************************************************************
+ * Classes for RGB, CYMK, HSV, and HSL colour representations *
+ **************************************************************/
 class RGB {
   constructor(r, g, b) {
     this.r = r;
@@ -36,53 +36,248 @@ class HSV {
   }
 }
 
-/*
- * get document elements
- */
+/*************************
+ * Get document elements *
+ *************************/
 const hueInput = document.querySelector('.slider-input');
 const colourCanvas = document.querySelector('.colourtriangle-canvas');
 const colourDisplay = document.querySelector('.colour-display');
+const greyDisplay = document.querySelector('.grey-display');
+const triangleHandle = document.querySelector('.triangle-handle');
 const hexInput = document.querySelector('.hex-input');
 const rgbInput = document.querySelector('.rgb-input');
 const cymkInput = document.querySelector('.cymk-input');
 const hsvInput = document.querySelector('.hsv-input');
 const hslInput = document.querySelector('.hsl-input');
 
-/*
- * 
- */
-hueInput.addEventListener( 'input', (e) => setCurrentColour(e.target.value) );
-hueInput.addEventListener( 'mousedown', () => focusHandle() );
-hueInput.addEventListener( 'mouseup', () => unFocusHandle() );
+/***************************
+ * Global colour variables *
+ ***************************/
+let hue;
+let fullSat; // full saturated colour in HSL
+let greyFullRGB; // full saturated colour, greyscaled, in RGB
+let greyFullHSL; // in HSL
 
-function setCurrentColour(hueValue) {
-  hexInput.value = hueValue;
-  colourDisplay.style.setProperty('background', `hsl(${hueValue}, 100%, 50%)`);
-  hueInput.style.setProperty('--thumb-colour', `hsl(${hueValue}, 100%, 50%)`);
-  drawTriangle(hueValue);
+let currentColour = new HSL(0, 0, 0); // current chosen colour, in hsl
+let currentGrey = new RGB(0, 0, 0); // current chosen colour, greyscaled, in rgb
+
+/*******************
+ * Event listeners *
+ *******************/
+
+// when user changes the hue slider
+hueInput.addEventListener( 'input', (e) => setCurrentHue(e.target.value) );
+hueInput.addEventListener( 'mousedown', () => focusThumb() );
+hueInput.addEventListener( 'mouseup', () => unFocusThumb() );
+// when user clicks on handle in triangle
+triangleHandle.addEventListener( 'mousedown', (e) => {
+  setCurrentColour(e);
+  focusHandle();
+} );
+triangleHandle.addEventListener( 'mouseup', () => unFocusHandle() );
+// when user clicks on triangle, but not on handle
+colourCanvas.addEventListener( 'mousedown', (e) => {
+  dragHandle(e); 
+  setCurrentColour(e);
+  focusHandle();
+} );
+colourCanvas.addEventListener( 'mouseup', () => unFocusHandle() );
+
+window.addEventListener( 'resize', () => moveHandleToDefault() );
+window.addEventListener( 'load', () => {
+  setCurrentHue(hueInput.value);
+  moveHandleToDefault();
+} );
+
+
+/*******************
+ * Event functions *
+ *******************/
+
+/**
+ * 
+ * @param {*} hueValue 
+ */
+function setCurrentHue(hueValue) {
+  hue = hueValue;
+  hueInput.style.setProperty('--thumb-colour', `hsl(${hue}, 100%, 50%)`);
+
+  // get the colour value positions
+  fullSat = new HSL(hue, 100, 50); // full saturated colour in hsl
+  greyFullRGB = toGreyRelLum601(fullSat); // in rgb
+  greyFullHSL = greyFullRGB.toHSL();
+
+  drawTriangle(hue);
+
+  // reposition the triangle handle and change the colour according to where it is
+  let triangleHandleBounds = triangleHandle.getBoundingClientRect();
+  let pos = boundTriangleHandle(
+    triangleHandleBounds.top + triangleHandle.clientHeight/2,
+    triangleHandleBounds.left + triangleHandle.clientWidth/2
+  );
+  setTriangleHandle(pos.top, pos.left, pos.colour);
 }
 
-function focusHandle() {
+/**
+ * 
+ * @param {*} e 
+ */
+function setCurrentColour(e) {
+  e.preventDefault();
+
+  document.onmousemove = dragHandle;
+  document.onmouseup = closeHandleDrag;
+
+  function closeHandleDrag() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+  }
+}
+
+/**
+ * 
+ * @param {*} e 
+ */
+function dragHandle(e) {
+  let pos = boundTriangleHandle(e.clientY, e.clientX);
+  setTriangleHandle(pos.top, pos.left, pos.colour);
+}
+
+/**
+ * 
+ */
+ function focusThumb() {
   hueInput.style.setProperty('--thumb-thickness', '2px');
   hueInput.style.setProperty('--thumb-outline', 'var(--primary-dark)');
 }
 
-function unFocusHandle() {
+/**
+ * 
+ */
+function unFocusThumb() {
   hueInput.style.setProperty('--thumb-thickness', '1px');
   hueInput.style.setProperty('--thumb-outline', 'var(--secondary-light)');
 }
 
+/**
+ * 
+ */
+function focusHandle() {
+  triangleHandle.style.setProperty('border', '2px solid var(--primary-dark)');
+}
+
+/**
+ * 
+ */
+function unFocusHandle() {
+  triangleHandle.style.setProperty('border', '1px solid var(--secondary-light)');
+}
+
+/**
+ * Sets the triangle picker handle to the given top and left absolute positions,
+ * changes its colour accordingly, and sets the colour representations
+ * @param {number} top 
+ * @param {number} left 
+ * @param {HSL} colour 
+ */
+function setTriangleHandle(top, left, colour) {
+  triangleHandle.style.left = (left - triangleHandle.clientWidth/2) + 'px';
+  triangleHandle.style.top = (top - triangleHandle.clientHeight/2) + 'px';
+  triangleHandle.style.setProperty(
+      'background', 
+      `hsl(${colour.h}, ${colour.s}%, ${colour.l}%)`
+  );
+
+  currentColour = colour;
+  currentGrey = toGreyRelLum601(currentColour);
+  setColourInputs();
+  colourDisplay.style.setProperty(
+    'background', 
+    `hsl(${currentColour.h}, ${currentColour.s}%, ${currentColour.l}%)`
+  );
+  greyDisplay.style.setProperty(
+    'background', 
+    `rgb(${currentGrey.r}, ${currentGrey.g}, ${currentGrey.b})`
+  );
+}
+
+/**
+ * 
+ */
+function setColourInputs() {
+  let hex = currentColour.toHEX();
+  let rgb = currentColour.toRGB();
+  let cymk = currentColour.toCYMK();
+  let hsv = currentColour.toHSV();
+  let hsl = currentColour;
+
+  hexInput.value = `#${hex}`;
+  rgbInput.value = `${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)}`;
+  cymkInput.value = `${Math.round(cymk.c)}%, ${Math.round(cymk.y)}%, ${Math.round(cymk.m)}%, ${Math.round(cymk.k)}%`;
+  hsvInput.value = `${Math.round(hsv.h)}°, ${Math.round(hsv.s)}%, ${Math.round(hsv.v)}%`;
+  hslInput.value = `${Math.round(hsl.h)}°, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%`;
+}
+
+/**
+ * 
+ * @param {*} top 
+ * @param {*} left 
+ * @returns 
+ */
+function boundTriangleHandle(top, left) {
+  // get the boundary x and y coordinates of the triangle canvas
+  let canvasBounds = colourCanvas.getBoundingClientRect();
+
+  // limit handle x coordinate to between canvas bounds
+  if (left < canvasBounds.left) { left = canvasBounds.left; }
+  else if (left > canvasBounds.right) { left = canvasBounds.right; }
+  if (top < canvasBounds.top) { top = canvasBounds.top; }
+  else if (top > canvasBounds.bottom) { top = canvasBounds.bottom; }
+
+  // limit handle y coordinate to areas of the canvas with colour
+  let canvasX = left - canvasBounds.left;
+  let canvasY = top - canvasBounds.top;
+
+  let fullY = colourCanvas.clientHeight * ( 1 - (greyFullHSL.l / 100));
+  let topSlope = fullY / colourCanvas.clientWidth;
+  let botSlope = (colourCanvas.clientHeight - fullY) / colourCanvas.clientWidth;
+
+  let topMin = Math.floor(topSlope * canvasX);
+  let topMax = colourCanvas.clientHeight - Math.floor(botSlope * canvasX);
+  if (canvasY < topMin) { canvasY = topMin; }
+  else if (canvasY > topMax) { canvasY = topMax; }
+  top = canvasY + canvasBounds.top;
+
+  // calculate colour chosen from position
+  let s = 100 * (canvasX / colourCanvas.clientWidth);
+  let l = 100 * (1 - (canvasY / colourCanvas.clientHeight)) + (50 - greyFullHSL.l) * 
+      (canvasX / colourCanvas.clientWidth);
+
+  return {top: top, left: left, colour: new HSL(hue, s, l)};
+}
+
+/**
+ * 
+ */
+function moveHandleToDefault() {
+  let canvasBounds = colourCanvas.getBoundingClientRect();
+
+  triangleHandle.style.left = (canvasBounds.left - triangleHandle.clientWidth/2) + 'px';
+  triangleHandle.style.top = (canvasBounds.top - triangleHandle.clientHeight/2) + 'px';
+  triangleHandle.style.setProperty('background', `hsl(0, 0%, 100%)`);
+}
+
+/**
+ * 
+ * @param {*} hueValue 
+ */
 function drawTriangle(hueValue) {
-  let ctx = colourCanvas.getContext("2d");
+  let ctx = colourCanvas.getContext('2d');
   let width = colourCanvas.width;
   let height = colourCanvas.height;
   ctx.clearRect(0, 0, width, height);
   let id = ctx.getImageData(0, 0, width, height);
   let pixels = id.data; 
-
-  let fullSat = new HSL(hueValue, 100, 50); // full saturated colour in hsl
-  let greyFullRGB = toGreyRelLum601(fullSat); // in rgb
-  let greyFullHSL = greyFullRGB.toHSL();
 
   // determine vertex of most saturated end and slopes of lines leading to it
   let fullY = height * ( 1 - (greyFullHSL.l / 100));
@@ -91,9 +286,9 @@ function drawTriangle(hueValue) {
 
   // fill in the triangle based based on the hue
   for (let x = 0; x < width; x++) {
-    for (let y = 0 + Math.floor(topSlope * x); y < height - Math.floor(botSlope * x); y++) {
+    for (let y = Math.floor(topSlope * x); y < height - Math.floor(botSlope * x); y++) {
       let s = 100 * (x / width);
-      let l = 100 * (1 - (y / height)) + (50 - greyFullHSL.l) * (x/width);
+      let l = 100 * (1 - (y / height)) + (50 - greyFullHSL.l) * (x / width);
       
       let hsl = new HSL(hueValue, s, l);
       let rgb = hsl.toRGB();
@@ -110,14 +305,18 @@ function drawTriangle(hueValue) {
 }
 
 
-/*
- * Greyscaling colour functions (luma and desaturation)
+/********************************************************
+ * Greyscaling colour functions (luma and desaturation) *
+ ********************************************************/
+
+/**
+ * Greyscales a colour using the ITU-R Recommendation BT.601
+ * @param {*} colour  RGB, CYMK, HSL, or HSV colours
+ * @return {RGB} ITU-R Recommendation BT.601 luma in RGB
  */
-// @param: RGB, CYMK, HSL, or HSV colours
-// @return: ITU-R Recommendation BT.601 luma in RGB
 function toGreyRelLum601(colour) {
   let rgb = colour;
-  if (colour.constructor.name != "RGB") {
+  if (colour.constructor.name != 'RGB') {
     try {
       rgb = colour.toRGB();
     } catch (error) {
@@ -129,11 +328,14 @@ function toGreyRelLum601(colour) {
   return new RGB(luma, luma, luma);
 }
 
-// @param: RGB, CYMK, HSL, or HSV colours
-// @return: ITU-R Recommendation BT.709 luma in RGB
+/**
+ * Greyscales a colour using the ITU-R Recommendation BT.709
+ * @param {*} colour  RGB, CYMK, HSL, or HSV colours
+ * @return {RGB} ITU-R Recommendation BT.709 luma in RGB
+ */
 function toGreyRelLum709(colour) {
   let rgb = colour;
-  if (colour.constructor.name != "RGB") {
+  if (colour.constructor.name != 'RGB') {
     try {
       rgb = colour.toRGB();
     } catch (error) {
@@ -145,11 +347,14 @@ function toGreyRelLum709(colour) {
   return new RGB(luma, luma, luma);
 }
 
-// @param: RGB, CYMK, HSL, or HSV colours
-// @return: Desaturated colour (S(aturation) in HSL/HSV set to 0) in RGB
+/**
+ * Greyscales a colour by desaturating, setting S (from HSL/HSV form) to 0
+ * @param {*} colour  RGB, CYMK, HSL, or HSV colours
+ * @return {RGB} Desaturated colour in RGB
+ */
 function toGreyDesaturate(colour) {
   let hsl = colour;
-  if (colour.constructor.name != "HSL") {
+  if (colour.constructor.name != 'HSL') {
     try {
       hsl = colour.toHSL();
     } catch (error) {
@@ -161,9 +366,10 @@ function toGreyDesaturate(colour) {
   return grey.toRGB();
 }
 
-/*
- * Colour conversion functions between HEX, RGB, CYMK, HSL, HSV
- */
+/****************************************************************
+ * Colour conversion functions between HEX, RGB, CYMK, HSL, HSV *
+ ****************************************************************/
+
 function hexToRGB(hex) {
   let reg = /^\#{0,1}([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return new RGB(parseInt(reg[1], 16), 
@@ -188,7 +394,8 @@ function hexToHSV(hex) {
 }
 
 RGB.prototype.toHEX = function() {
-  return ((1 << 24) + (this.r << 16) + (this.g << 8) + this.b).toString(16).slice(1);
+  return ((1 << 24) + (Math.round(this.r) << 16) + 
+      (Math.round(this.g) << 8) + Math.round(this.b)).toString(16).slice(1);
 }
 
 RGB.prototype.toCYMK = function() {
@@ -197,9 +404,16 @@ RGB.prototype.toCYMK = function() {
   let bd = this.b / 255;
   let k = 1 - Math.max(rd, gd, bd);
   let rk = 1 - k;
-  let c = (rk - rd) / rk;
-  let y = (rk - bd) / rk;
-  let m = (rk - gd) / rk;
+  let c, y, m;
+  if (rk != 0) {
+    c = (rk - rd) / rk;
+    y = (rk - bd) / rk;
+    m = (rk - gd) / rk;
+  } else {
+    c = 0;
+    y = 0;
+    m = 0;
+  }
   c = Math.round(c * 100);
   y = Math.round(y * 100);
   m = Math.round(m * 100);
